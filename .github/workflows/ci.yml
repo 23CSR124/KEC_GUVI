@@ -1,6 +1,5 @@
 name: CI/CD Pipeline
 
-# Trigger on push to main or Pull Requests
 on:
   push:
     branches: [ "main" ]
@@ -8,8 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  # JOB 1: CI - TEST & BUILD CHECK
-  # This runs on every push and PR to ensure code is healthy
+  # JOB 1: CHECK BUILD
   build-check:
     runs-on: ubuntu-latest
     steps:
@@ -28,8 +26,7 @@ jobs:
       - name: Run Build Check
         run: npm run build
 
-  # JOB 2: CD - BUILD & PUSH DOCKER IMAGE
-  # Runs ONLY if 'build-check' passes and it is a push to 'main'
+  # JOB 2: BUILD & PUSH DOCKER IMAGE
   docker-push:
     needs: build-check
     if: github.event_name == 'push'
@@ -41,7 +38,9 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
+          # Matches your secret: DOCKER_USERNAME
           username: ${{ secrets.DOCKER_USERNAME }}
+          # Matches your secret: DOCKER_PASSWORD
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and Push Docker Image
@@ -51,8 +50,7 @@ jobs:
           push: true
           tags: manoj124/kongu-guvi-hub:v1
 
-  # JOB 3: CD - DEPLOY TO EC2
-  # Runs ONLY if 'docker-push' finishes successfully
+  # JOB 3: DEPLOY TO EC2 (SAFE MODE)
   deploy:
     needs: docker-push
     if: github.event_name == 'push'
@@ -63,14 +61,20 @@ jobs:
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          # UPDATED: Matches your secret 'EC2_SSH'
+          key: ${{ secrets.EC2_SSH }}
           script: |
-            # 1. Stop and remove the old container (ignore errors if it doesn't exist)
-            docker stop my-app || true
-            docker rm my-app || true
+            echo "Stopping testing container..."
+            # Using 'myapp-test' on Port 8081 to avoid breaking Jenkins
+            sudo docker stop myapp-test || true
+            sudo docker rm myapp-test || true
             
-            # 2. Pull the latest image from Docker Hub
-            docker pull manoj124/kongu-guvi-hub:v1
+            echo "Pulling latest image..."
+            sudo docker pull manoj124/kongu-guvi-hub:v1
             
-            # 3. Run the new container on Port 80
-            docker run -d -p 80:80 --name my-app manoj124/kongu-guvi-hub:v1
+            echo "Starting new container..."
+            sudo docker run -d \
+              -p 8081:80 \
+              --restart always \
+              --name myapp-test \
+              manoj124/kongu-guvi-hub:v1
