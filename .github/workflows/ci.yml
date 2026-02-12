@@ -62,7 +62,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           # UPDATED: Matches your secret 'EC2_SSH'
-          key: ${{ secrets.EC2_SSH }}
+          key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             echo "Stopping testing container..."
             # Using 'myapp-test' on Port 8081 to avoid breaking Jenkins
