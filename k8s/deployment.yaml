@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: myapp
-          image: chandrulinesmasher/mysampleappv1
+          image: manoj124/kongu-guvi-hub:v1
           ports:
             - containerPort: 3000
           imagePullPolicy: Always
